@@ -13,11 +13,6 @@ export default function Home() {
 
   const handleChannelSelection = (channel: string) => {
     setChannel(channel)
-    setTimeout(() => {
-      if (formRef.current) {
-        formRef.current.requestSubmit()
-      }
-    }, 0)
   }
 
   return (
