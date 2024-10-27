@@ -1,5 +1,6 @@
 import React, {useRef, useState} from "react";
 import {getCsrfToken} from "~/utils";
+import {router} from "@inertiajs/react";
 
 export default function Home() {
   const [username, setUsername] = useState('')
@@ -9,15 +10,34 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    if (!username || !channel) {
+      alert('Please choose username and/or channel')
+      return
+    }
+
+    try {
+      const values = new FormData(e.currentTarget)
+      values.append('channel', channel)
+
+      const response = await fetch(`/channel/${channel}/join`, {
+        method: 'POST',
+        body: values
+      })
+
+      if (response.ok) {
+        localStorage.setItem('username', username)
+        router.visit(`/channel/${channel}`)
+      } else {
+        console.error('Error on request:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error on form send:', error)
+    }
   }
 
   const handleChannelSelection = (channel: string) => {
     setChannel(channel)
-    setTimeout(() => {
-      if (formRef.current) {
-        formRef.current.requestSubmit()
-      }
-    }, 0)
   }
 
   return (

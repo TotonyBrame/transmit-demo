@@ -1,7 +1,8 @@
 import {InferPageProps} from "@adonisjs/inertia/types";
 import ChannelsController from "#controllers/channels_controller";
-import React, {useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {getCsrfToken} from "~/utils";
+import {useTransmit} from "~/app/transmitContext";
 
 export default function Channel(props: InferPageProps<ChannelsController, 'channel'>) {
   const {channel} = props;
@@ -10,9 +11,55 @@ export default function Channel(props: InferPageProps<ChannelsController, 'chann
   const formRef = useRef<HTMLFormElement | null>(null)
   const csrfTokenInput = getCsrfToken()
   const username = localStorage.getItem('username') || 'Guest';
+  const transmit = useTransmit()
+
+  useEffect(() => {
+    let subscription
+    const setupSubscription = async () => {
+      try {
+        const subscription = transmit.subscription(`channels/${channel}`)
+        await subscription.create()
+
+        subscription.onMessage(({message, type}) => {
+          if (type === 'join' || type === 'message') {
+            setMessageList(prevMessages => [...prevMessages, message])
+          }
+        })
+      } catch (error) {
+        console.error('Error when subscribing', error)
+      }
+    }
+
+    setupSubscription()
+
+    return () => {
+      if (subscription) {
+        void subscription.delete()
+      }
+    }
+  }, [transmit]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!newMessage.trim()) return
+
+    try {
+      const values = new FormData(e.currentTarget)
+      values.append('channel', channel)
+      values.append('username', username)
+
+      const response = await fetch(`/channel/${channel}/message`, {
+        method: 'POST',
+        body: values
+      })
+
+      setNewMessage('')
+      if (!response.ok) {
+        console.error('Failed to send message')
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+    }
   };
 
   return (
